@@ -1,0 +1,12 @@
+LICENSE.txt
+MANIFEST.in
+README.md
+setup.py
+PyObfuscator/Obfuscator.py
+PyObfuscator/__init__.py
+PyObfuscator/__main__.py
+PyObfuscator.egg-info/PKG-INFO
+PyObfuscator.egg-info/SOURCES.txt
+PyObfuscator.egg-info/dependency_links.txt
+PyObfuscator.egg-info/entry_points.txt
+PyObfuscator.egg-info/top_level.txt
