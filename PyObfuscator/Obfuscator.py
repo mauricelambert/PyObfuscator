@@ -34,7 +34,7 @@ To run all tests use:
     - ./test/Test_Obfuscator.py
     - python3 test/Test_Obfuscator.py -v # with verbose mode
     - python3 -m unittest -v test/Test_Obfuscator.py # using unittest module command (verbose mode)
-    - python3 -m unittest discover # using unittest module and discover mode
+    - cd test; python3 -m unittest discover # using unittest module and discover mode
 """
 
 default_dir = dir()
@@ -54,7 +54,15 @@ import json
 import ast
 
 
-__all__ = ["Obfuscator", "ChangeAttributes", "main", "Name", "ObfuscationError"]
+__all__ = [
+    "Obfuscator",
+    "ChangeAttributes",
+    "main",
+    "Name",
+    "ObfuscationError",
+    "DocPassword",
+    "DocLevels",
+]
 
 
 class ObfuscationError(Exception):
@@ -84,6 +92,9 @@ class DocPassword:
     Note: this password is not use if you don't use
     Obfuscator.xor_code function or Level is less than 4.
     """
+
+    def print_the_doc():
+        print(DocPassword.__doc__)
 
 
 class DocLevels:
@@ -116,6 +127,9 @@ class DocLevels:
         - "hexa code" ('a' become '\\x061') (using Obfuscator.hexa_encode function)
             file size * 4
     """
+
+    def print_the_doc():
+        print(DocLevels.__doc__)
 
 
 @dataclass
@@ -166,8 +180,9 @@ class Obfuscator(NodeTransformer):
     filename(str): is the name of python file to obscate
     output_filename(str) = None: is the name of obfuscate python file
     level(int) = 5: is the obfuscation level (see the DocLevels's doc string for more information)
-    names(Dict[str, str]) = {}: pre-defined name (for example to import class or method in other file you need to know the name)
-        For exemple: to import class named 'Obfuscator' as 'Fdg6jsT_2', names must be "{'Obfuscator': 'Fdg6jsT_2'}".
+    names(Dict[str, Name]) = {}: pre-defined name (for example to import class or method in other file you need to know the name)
+        For exemple: to import class named 'Obfuscator' as 'Fdg6jsT_2', names must be
+        "{'Obfuscator': Name('Obfuscator', 'Fdg6jsT_2', False, None)}".
     deobfuscate_file(bool) = True: if True write old variable name and new variable name in json file to reverse obfuscation
     password(str) = None: password for xor encrypt (see the DocPassword's doc string for more information)
     file_encoding(str) = utf-8: python file enconding
@@ -274,9 +289,7 @@ class Obfuscator(NodeTransformer):
             )
 
         if self.code is None:
-            raise ObfuscationError(
-                "self.code is required to write the code"
-            )
+            raise ObfuscationError("self.code is required to write the code")
 
         self.code = f"{self._dir_definition}{self.code}"
         return self.code
@@ -290,9 +303,7 @@ class Obfuscator(NodeTransformer):
         """
 
         if self.code is None:
-            raise ObfuscationError(
-                "self.code is required to write the code"
-            )
+            raise ObfuscationError("self.code is required to write the code")
 
         with open(self.output_filename, "w", encoding=self.encoding) as file:
             file.write(self.code)
@@ -981,9 +992,10 @@ def main() -> None:
 
     names = {}
 
-    for name in args.names:
-        name, obfu_name = name.split(":", 1)
-        names[name] = Name(name, obfu_name, False, None)
+    if args.names is not None:
+        for name in args.names:
+            name, obfu_name = name.split(":", 1)
+            names[name] = Name(name, obfu_name, False, None)
 
     logging.basicConfig(
         filename=args.log_filename,

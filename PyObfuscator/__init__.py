@@ -21,17 +21,39 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###################
 
-__version__ = "0.0.1"
-__all__ = ["Obfuscator", "ChangeAttributes", "main", "Name", "ObfuscationError"]
+__version__ = "0.0.2"
+__all__ = [
+    "Obfuscator",
+    "ChangeAttributes",
+    "obfuscation",
+    "Name",
+    "ObfuscationError",
+    "DocPassword",
+    "DocLevels",
+]
 
 try:
-    from .Obfuscator import Obfuscator, ChangeAttributes, Name, ObfuscationError, main as obfuscation
+    from .Obfuscator import (
+        Obfuscator,
+        ChangeAttributes,
+        Name,
+        ObfuscationError,
+        main as obfuscation,
+    )
 except ImportError:
-    from Obfuscator import Obfuscator, ChangeAttributes, Name, ObfuscationError, main as obfuscation
+    from Obfuscator import (
+        Obfuscator,
+        ChangeAttributes,
+        Name,
+        ObfuscationError,
+        main as obfuscation,
+    )
 
-print("""
+print(
+    """
 PyObfuscator  Copyright (C) 2021  Maurice Lambert
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software, and you are welcome to redistribute it
 under certain conditions.
-""")
+"""
+)
