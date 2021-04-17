@@ -68,7 +68,7 @@ python3 -m unittest discover
 
 ## Bugs and python errors
 
-### Attributes and super
+### Class
 Becareful with attribute name and definition !
 
 Your attributes must be defined as attributes and your attributes functions mustn't have same name than attributes function defined in different files !
