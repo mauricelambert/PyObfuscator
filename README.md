@@ -73,7 +73,7 @@ Becareful with attribute name and definition !
 
 Your attributes must be defined as attributes and your attributes functions mustn't have same name than attributes function defined in different files !
 
-With the `super` function your must add `self.class` and `self` as arguments (without consequences).
+With the `super` function your must add `self.__class__` and `self` as arguments (no consequences).
 
 ```python
 class Classe:
