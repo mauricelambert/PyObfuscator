@@ -774,7 +774,7 @@ class Obfuscator(NodeTransformer):
                 value=ast.Tuple(elts=[], ctx=ast.Load()),
             )
 
-            for name, module in modules.items():
+            for module, name in modules.items():
 
                 assign.targets[0].elts.append(ast.Name(id=name, ctx=ast.Store()))
                 assign.value.elts.append(
