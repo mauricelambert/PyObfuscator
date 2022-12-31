@@ -79,7 +79,7 @@ python3 -m coverage report
 
 ### Python version
 
-Be careful with environement, the python version used to obfuscate the code should be used to execute it, because `builtins` methods can be differents. Example using `python3.11` to obfuscate a code and using `python3.8` to execute the obfuscation:
+Be careful with environment, the python version used to obfuscate the code should be used to execute it, because `builtins` methods can be differents. Example using `python3.11` to obfuscate a code and using `python3.8` to execute the obfuscation:
 
 ```
 Traceback (most recent call last):
