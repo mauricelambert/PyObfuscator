@@ -1,2 +1,4 @@
 include *.md
 include *.txt
+include tests/*.py
+include examples/*.py
