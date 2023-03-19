@@ -3,7 +3,7 @@
 
 ###################
 #    This module obfuscates python code.
-#    Copyright (C) 2021  Maurice Lambert
+#    Copyright (C) 2021, 2022, 2023  Maurice Lambert
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ license = "GPL-3.0 License"
 __url__ = "https://github.com/mauricelambert/PyObfuscator/"
 
 copyright = """
-PDForensic  Copyright (C) 2022  Maurice Lambert
+PyObfuscator  Copyright (C) 2021, 2022, 2023  Maurice Lambert
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software, and you are welcome to redistribute it
 under certain conditions.
@@ -77,7 +77,33 @@ __all__ = [
 
 print(copyright)
 
-from ast import AST, Attribute, Call, Tuple as TupleAst, Load, Constant, Import, ImportFrom, AugAssign, AnnAssign, Assign, Module, Store, Name as NameAst, NodeTransformer, Subscript, Expr, ClassDef, FunctionDef, Global, alias, arg, parse, unparse
+from ast import (
+    AST,
+    Attribute,
+    Call,
+    Tuple as TupleAst,
+    Load,
+    Constant,
+    Import,
+    ImportFrom,
+    AugAssign,
+    AnnAssign,
+    Assign,
+    Module,
+    Store,
+    Name as NameAst,
+    NodeTransformer,
+    Subscript,
+    Expr,
+    ClassDef,
+    FunctionDef,
+    Global,
+    alias,
+    arg,
+    parse,
+    unparse,
+    JoinedStr,
+)
 from argparse import ArgumentParser, Namespace
 from logging import debug, info, basicConfig
 from string import ascii_letters, digits
@@ -113,7 +139,6 @@ class DocPassword:
 
 
 class DocLevels:
-
     r"""
     Level is an integer to define obfuscation level.
 
@@ -175,6 +200,7 @@ class ModuleImport:
     name: str
     alias: str
 
+
 @dataclass
 class ElementImport:
 
@@ -216,8 +242,7 @@ class Obfuscator(NodeTransformer):
     ):
         self.filename = filename
         self.output_filename = (
-            output_filename or
-            f"{splitext(filename)[0]}_obfu.py"
+            output_filename or f"{splitext(filename)[0]}_obfu.py"
         )
         self.level = level
         self.deobfuscate = deobfuscate
@@ -240,34 +265,37 @@ class Obfuscator(NodeTransformer):
 
         self.using_default_obfu = False
 
+        self.in_format_string = False
+
         super().__init__()
 
-    def get_random_name(self, first_name: str, is_defined: bool = False) -> Name:
-
+    def get_random_name(
+        self, first_name: str, is_defined: bool = False
+    ) -> Name:
         """
         This function returns a random variable name.
 
         >>> Obfuscator("").get_random_name("test").name
         'test'
-        >>> 
+        >>>
         """
 
         if (name := self.default_names.get(first_name)) is not None:
             return name
 
         while name is None or name in self.obfu_names.keys():
-
             first = choice("_" + ascii_letters)
             name = "".join(
-                choices(
-                    "_" + ascii_letters + digits, k=self.names_size - 1
-                )
+                choices("_" + ascii_letters + digits, k=self.names_size - 1)
             )
 
             name = first + name
 
         name = Name(
-            first_name, name, is_defined or self.default_is_define, self.current_class
+            first_name,
+            name,
+            is_defined or self.default_is_define,
+            self.current_class,
         )
         self.obfu_names[name.obfuscation] = name
         self.default_names[first_name] = name
@@ -275,7 +303,6 @@ class Obfuscator(NodeTransformer):
         return name
 
     def get_code(self) -> Tuple[str, AST]:
-
         """
         This function returns content and AST from python file.
         """
@@ -287,24 +314,23 @@ class Obfuscator(NodeTransformer):
 
         astcode = self.astcode = parse(code)
         return code, astcode
-        
+
     def add_super_arguments(self, code: str = None) -> Tuple[str, AST]:
-    
         r"""
         This function adds super arguments because super
         can't defined it's arguments after obfuscation.
-        
+
         >>> code = "class A:\n\tdef __init__(self):super().__init__()"
         >>> code, _ = Obfuscator("").add_super_arguments(code)
         >>> code
         'class A:\n\tdef __init__(self):super(self.__class__, self).__init__()'
-        >>> 
+        >>>
         """
-        
+
         code = self.code = sub(
-            r'\bsuper\b\(\)',
+            r"\bsuper\b\(\)",
             "super(self.__class__, self)",
-            (code or self.code)
+            (code or self.code),
         )
 
         astcode = self.astcode = parse(code)
@@ -312,7 +338,6 @@ class Obfuscator(NodeTransformer):
         return code, astcode
 
     def add_builtins(self) -> str:
-
         """
         This function adds builtins obfuscation on the top of the code
         and returns it.
@@ -334,7 +359,6 @@ class Obfuscator(NodeTransformer):
         return code
 
     def write_code(self) -> Tuple[str, AST]:
-
         """
         This function writes obfuscate code in output file
         and returns the obfuscate code.
@@ -354,7 +378,6 @@ class Obfuscator(NodeTransformer):
         return code
 
     def gzip(self, code: str = None) -> str:
-
         """
         This function compress python code with gzip.
            (Level 3)
@@ -369,20 +392,21 @@ class Obfuscator(NodeTransformer):
         True
         >>> exec(obfu)
         Hello World !
-        >>> 
+        >>>
         """
 
         code = code or self.code
 
         if self.level >= 3:
             code = compress(code.encode())
-            self.code = code = f"from gzip import decompress as __;_=exec;_(__({code}))"
+            self.code = (
+                code
+            ) = f"from gzip import decompress as __;_=exec;_(__({code}))"
             debug("Code is compressed using gzip.")
 
         return code
 
     def hexadecimal(self, code: str = None) -> str:
-
         r"""
         This function encodes python code as hexadecimal ('a' become '\x61').
            (Level 6)
@@ -397,22 +421,19 @@ class Obfuscator(NodeTransformer):
         True
         >>> exec(obfu)
         Hello World !
-        >>> 
+        >>>
         """
 
         code = code or self.code
 
         if self.level >= 6:
-            code = "".join(
-                [f"\\x{car:0>2x}" for car in code.encode()]
-            )
+            code = "".join([f"\\x{car:0>2x}" for car in code.encode()])
             code = self.code = f"_=exec;_('{code}')"
             debug("Code is encoded as hexadecimal.")
 
         return code
 
     def xor_code(self, code: str = None, password: str = None) -> str:
-
         """
         This function encrypts code using xor.
            (Level 4)
@@ -427,7 +448,7 @@ class Obfuscator(NodeTransformer):
 
         >>> exec(Obfuscator("").xor_code("print('Hello World !')"))
         Hello World !
-        >>> 
+        >>>
         """
 
         code = code or self.code
@@ -447,7 +468,8 @@ class Obfuscator(NodeTransformer):
             debug("Encrypt with random key.")
 
         code = [
-            char ^ password[i % password_lenght] for i, char in enumerate(code.encode())
+            char ^ password[i % password_lenght]
+            for i, char in enumerate(code.encode())
         ]
 
         if ask_password:
@@ -466,7 +488,6 @@ class Obfuscator(NodeTransformer):
         return code
 
     def base85(self, code: str = None) -> str:
-
         """
         This function encodes python code with base85.
            (Level 5)
@@ -477,7 +498,7 @@ class Obfuscator(NodeTransformer):
 
         >>> exec(Obfuscator("").base85("print('Hello World !')"))
         Hello World !
-        >>> 
+        >>>
         """
 
         code = code or self.code
@@ -486,15 +507,14 @@ class Obfuscator(NodeTransformer):
             return code
 
         code = b85encode(code.encode())
-        code = self.code = (
-            f"from base64 import b85decode as _;___=bytes.decode;__=exec;__(___(_({code})))"
-        )
+        code = (
+            self.code
+        ) = f"from base64 import b85decode as _;___=bytes.decode;__=exec;__(___(_({code})))"
         debug("Code is encoded with base85")
 
         return code
 
     def delete_field(self, element: AST, field: str) -> AST:
-
         """
         This function deletes field in AST object.
         """
@@ -508,7 +528,6 @@ class Obfuscator(NodeTransformer):
         return element
 
     def delete_annotations(self, element: AST) -> AST:
-
         """
         This function deletes annotations in AST object.
         """
@@ -516,7 +535,6 @@ class Obfuscator(NodeTransformer):
         return self.delete_field(element, "annotation")
 
     def delete_returns(self, element: AST) -> AST:
-
         """
         This function deletes returns in AST object.
         """
@@ -524,7 +542,6 @@ class Obfuscator(NodeTransformer):
         return self.delete_field(element, "returns")
 
     def init_builtins(self) -> str:
-
         """
         This function obfuscates default variables and builtins names.
         """
@@ -540,7 +557,6 @@ class Obfuscator(NodeTransformer):
         return default_variables
 
     def init_import(self, code: str = None) -> Tuple[str, AST]:
-
         """
         This function adds an import function to try module 'from <module>.<module> import <module>'.
 
@@ -552,12 +568,16 @@ class Obfuscator(NodeTransformer):
         code = code or self.code
 
         self.code = code = (
-            "def myimport(module, element):\n\ttry:return __import__(module+'.'+element)"
-            "\n\texcept ImportError:return __import__(module)"
-            f"\n{self.code}"
-        ) if code else (
-            "def myimport(module, element):\n\ttry:return __import__(module+'.'+element)"
-            "\n\texcept ImportError:return __import__(module)\n"
+            (
+                "def myimport(module, element):\n\ttry:return __import__(module+'.'+element)"
+                "\n\texcept ImportError:return __import__(module)"
+                f"\n{self.code}"
+            )
+            if code
+            else (
+                "def myimport(module, element):\n\ttry:return __import__(module+'.'+element)"
+                "\n\texcept ImportError:return __import__(module)\n"
+            )
         )
 
         astcode = self.astcode = parse(code)
@@ -565,7 +585,6 @@ class Obfuscator(NodeTransformer):
         return code, astcode
 
     def init_crypt_strings(self, code: str = None) -> Tuple[str, AST]:
-
         """
         This function adds the decrypt function to decrypt obfuscated/encrypted strings.
 
@@ -583,13 +602,17 @@ class Obfuscator(NodeTransformer):
             return code, self.astcode
 
         self.code = code = (
-            "xor=lambda bytes_:(bytes([x^"
-            f"{self._xor_password_key}[i%{self._xor_password_key_length}]"
-            f" for i,x in enumerate(bytes_)]))\n{self.code}"
-        ) if code else (
-            "xor=lambda bytes_:(bytes([x^"
-            f"{self._xor_password_key}[i%{self._xor_password_key_length}]"
-            " for i,x in enumerate(bytes_)]))\n"
+            (
+                "xor=lambda bytes_:(bytes([x^"
+                f"{self._xor_password_key}[i%{self._xor_password_key_length}]"
+                f" for i,x in enumerate(bytes_)]))\n{self.code}"
+            )
+            if code
+            else (
+                "xor=lambda bytes_:(bytes([x^"
+                f"{self._xor_password_key}[i%{self._xor_password_key_length}]"
+                " for i,x in enumerate(bytes_)]))\n"
+            )
         )
 
         astcode = self.astcode = parse(code)
@@ -597,7 +620,6 @@ class Obfuscator(NodeTransformer):
         return code, astcode
 
     def xor(self, data: bytes) -> bytes:
-
         """
         This function encrypts data.
 
@@ -610,11 +632,13 @@ class Obfuscator(NodeTransformer):
                 "To encrypt data the encryption key must be set."
             )
 
-        cipher = [byte ^ self._xor_password_key[i % self._xor_password_key_length] for i, byte in enumerate(data)]
+        cipher = [
+            byte ^ self._xor_password_key[i % self._xor_password_key_length]
+            for i, byte in enumerate(data)
+        ]
         return bytes(cipher)
 
     def set_namespace_name(self, name: str) -> str:
-
         """
         This function sets current namespace name.
 
@@ -626,7 +650,7 @@ class Obfuscator(NodeTransformer):
         'Test'
         >>> obfu.current_class
         'Test.test'
-        >>> 
+        >>>
         """
 
         namespace = self.current_class
@@ -640,7 +664,6 @@ class Obfuscator(NodeTransformer):
     def get_targets_and_value_for_import(
         self, module: str, elements: List[alias], is_from_import: bool = True
     ) -> Tuple[TupleAst, TupleAst]:
-
         """
         This function obfuscates 'from ... import ...'.
         """
@@ -652,18 +675,18 @@ class Obfuscator(NodeTransformer):
             alias = getattr(element, "asname", None) or element.name
 
             code = None
-            for name in module.split('.')[1:]:
+            for name in module.split(".")[1:]:
                 code = f'getattr(myimport("{module}", "{element.name}"), "{name}")'
 
             if is_from_import:
-                code = f'''getattr({code if code else f'myimport("{module}", "{element.name}")'}, "{element.name}")'''
+                code = f"""getattr({code if code else f'myimport("{module}", "{element.name}")'}, "{element.name}")"""
 
             targets.append(NameAst(id=alias, ctx=Store()))
             values.append(parse(code).body[0].value)
 
         info(f"Obfuscates from {module} import {element.name}")
 
-        # TODO add parse(start) to AST 
+        # TODO add parse(start) to AST
 
         return TupleAst(elts=targets, ctx=Load()), TupleAst(
             elts=values, ctx=Load()
@@ -671,7 +694,6 @@ class Obfuscator(NodeTransformer):
 
     @staticmethod
     def delete_doc_string(astcode: AST) -> AST:
-
         """
         This function deletes doc string in AST object.
         """
@@ -685,7 +707,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def default_obfuscation(self) -> None:
-
         """
         This function starts the default obfuscation process.
 
@@ -709,7 +730,9 @@ class Obfuscator(NodeTransformer):
         astcode = attributes_obfuscator.visit(astcode)
 
         code = unparse(astcode)
-        self.code = code.replace("'decode'", "'\\x64\\x65\\x63\\x6f\\x64\\x65'").replace("'utf-8'", "'\\x75\\x74\\x66\\x2d\\x38'")
+        self.code = code.replace(
+            "'decode'", "'\\x64\\x65\\x63\\x6f\\x64\\x65'"
+        ).replace("'utf-8'", "'\\x75\\x74\\x66\\x2d\\x38'")
         code = self.add_builtins()
         code = self.gzip(code)
         code = self.xor_code(code)
@@ -719,7 +742,6 @@ class Obfuscator(NodeTransformer):
         self.write_deobfuscate()
 
     def get_attributes_from(self, new_ast: AST, old_ast: AST) -> AST:
-
         """
         This function adds attributes from default AST to obfuscate AST.
 
@@ -735,8 +757,17 @@ class Obfuscator(NodeTransformer):
 
         return new_ast
 
-    def visit_Constant(self, astcode: Constant) -> Call:
+    def visit_JoinedStr(self, astcode: JoinedStr) -> JoinedStr:
+        """
+        This function changes the visit_Constant's behaviour.
+        """
 
+        self.in_format_string = True
+        astcode = self.generic_visit(astcode)
+        self.in_format_string = False
+        return astcode
+
+    def visit_Constant(self, astcode: Constant) -> Call:
         """
         This function encrypts python constants data.
            (Level 2)
@@ -747,32 +778,57 @@ class Obfuscator(NodeTransformer):
 
         if self.level < 2:
             info("Level is less than 2 no Constant obfuscation.")
-            return astcode 
+            return astcode
 
-        if isinstance(astcode.value, str):
+        is_str = isinstance(astcode.value, str)
+
+        if is_str and self.in_format_string:
+            debug(f"Format string obfuscation for {astcode.value!r}.")
+            astcode.value = astcode.value.encode(self.encoding)
+            astcode = self.generic_visit(astcode)
+
+            return Constant(
+                value="".join(
+                    f"\\x{x:0>2x}" if i % 2 else f"\\{x:0>3o}"
+                    for i, x in enumerate(astcode.value)
+                ),
+                kind=None,
+            )
+
+        elif is_str:
             debug(f"String obfuscation for {astcode.value!r}.")
             astcode.value = astcode.value.encode(self.encoding)
             astcode = self.generic_visit(astcode)
 
             return Call(
                 func=Call(
-                    func=NameAst(id=self.default_names['getattr'].obfuscation, ctx=Load()),
+                    func=NameAst(
+                        id=self.default_names["getattr"].obfuscation,
+                        ctx=Load(),
+                    ),
                     args=[
                         Call(
-                            func=NameAst(id=self.default_names['xor'].obfuscation, ctx=Load()),
-                            args=[Constant(value=self.xor(astcode.value), kind=None)],
+                            func=NameAst(
+                                id=self.default_names["xor"].obfuscation,
+                                ctx=Load(),
+                            ),
+                            args=[
+                                Constant(
+                                    value=self.xor(astcode.value), kind=None
+                                )
+                            ],
                             keywords=[],
                         ),
-                        Constant(value='decode', kind=None),
+                        Constant(value="decode", kind=None),
                     ],
                     keywords=[],
                 ),
-                args=[Constant(value='utf-8', kind=None)],
+                args=[Constant(value="utf-8", kind=None)],
                 keywords=[],
             )
 
         elif isinstance(astcode.value, bytes):
-            debug("Bytes obfuscation for {astcode.value!r}.")
+            debug(f"Bytes obfuscation for {astcode.value!r}.")
             astcode = self.generic_visit(astcode)
             return Call(
                 func=NameAst(
@@ -782,13 +838,32 @@ class Obfuscator(NodeTransformer):
                 keywords=[],
             )
 
+        elif isinstance(astcode.value, int) and not self.in_format_string:
+            info(f"Integer obfuscation for {astcode.value!r}")
+            astcode = self.generic_visit(astcode)
+            return Call(
+                func=NameAst(
+                    id=self.default_names["int"].obfuscation, ctx=Load()
+                ),
+                args=[
+                    Constant(
+                        value="".join(
+                            f"\\x{x:0>2x}" if i % 2 else f"\\{x:0>3o}"
+                            for i, x in enumerate(oct(astcode.value).encode())
+                        )
+                    ),
+                    Constant(value=8),
+                ],
+                keywords=[],
+            )
         else:
-            info("{astcode.value!r} isn't data, this Constant can't be obfuscated.")
+            info(
+                f"In format string {astcode.value!r} this constant type can't be obfuscated."
+            )
             astcode = self.generic_visit(astcode)
             return astcode
 
     def visit_Module(self, astcode: Module) -> Module:
-
         """
         This function deletes the Module doc string.
 
@@ -807,7 +882,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def visit_ImportFrom(self, astcode: ImportFrom) -> Assign:
-
         """
         This function build a obfuscate 'from ... import ...'
         """
@@ -841,7 +915,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def visit_Import(self, astcode: Import) -> Assign:
-
         """
         This function obfuscates 'import ...'
         """
@@ -852,7 +925,9 @@ class Obfuscator(NodeTransformer):
             return astcode
 
         modules = {
-            alias.name: ModuleImport(alias.name.split('.')[0], alias.__dict__.get("asname"))
+            alias.name: ModuleImport(
+                alias.name.split(".")[0], alias.__dict__.get("asname")
+            )
             for alias in astcode.names
         }
         debug(f"Import obfuscation ({', '.join(modules.keys())}).")
@@ -866,7 +941,7 @@ class Obfuscator(NodeTransformer):
         )
 
         for name, module in modules.items():
-            if module.alias is None or '.' not in name:
+            if module.alias is None or "." not in name:
                 values.append(
                     Call(
                         func=NameAst(id="__import__", ctx=Load()),
@@ -875,17 +950,22 @@ class Obfuscator(NodeTransformer):
                     )
                 )
             else:
-                _, value = self.get_targets_and_value_for_import(name, [ElementImport(name.split('.')[-1], module.alias)], False)
+                _, value = self.get_targets_and_value_for_import(
+                    name,
+                    [ElementImport(name.split(".")[-1], module.alias)],
+                    False,
+                )
                 values.append(value.elts[0])
 
-            targets.append(NameAst(id=module.alias or module.name, ctx=Store()))
+            targets.append(
+                NameAst(id=module.alias or module.name, ctx=Store())
+            )
 
         astcode = self.get_attributes_from(assign, astcode)
         astcode = self.generic_visit(astcode)
         return astcode
 
     def visit_ClassDef(self, astcode: ClassDef) -> ClassDef:
-
         """
         This function obfuscates the class name and delete the doc string.
 
@@ -905,7 +985,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def visit_FunctionDef(self, astcode: FunctionDef) -> FunctionDef:
-
         """
         This function obfuscates function name if isn't a magic method.
 
@@ -917,12 +996,8 @@ class Obfuscator(NodeTransformer):
 
         if self.level >= 1:
             name = astcode.name
-            if not (
-                name.startswith("__") and name.endswith("__")
-            ):
-                astcode.name = self.get_random_name(
-                    name, True
-                ).obfuscation
+            if not (name.startswith("__") and name.endswith("__")):
+                astcode.name = self.get_random_name(name, True).obfuscation
             debug(f"{astcode.name!r} function obfuscation.")
             astcode = self.delete_doc_string(astcode)
 
@@ -931,7 +1006,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def visit_Name(self, astcode: NameAst) -> NameAst:
-
         """
         This function obfuscates name.
 
@@ -947,7 +1021,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def visit_Global(self, astcode: Global) -> Global:
-
         """
         This function obfuscates global names
 
@@ -964,7 +1037,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def visit_arg(self, astcode: arg) -> arg:
-
         """
         This function obfuscates AST arg
 
@@ -981,9 +1053,8 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def visit_AnnAssign(self, astcode: AnnAssign) -> Assign:
-
         """
-        This function obfuscates assignation. 
+        This function obfuscates assignation.
 
         astcode(AnnAssign): assign with annotation
         return an Assign obfuscated
@@ -999,7 +1070,6 @@ class Obfuscator(NodeTransformer):
         return astcode
 
     def write_deobfuscate(self) -> None:
-
         """
         This function saves configuration and the mapping between
         variable names and obfuscation names.
@@ -1046,7 +1116,6 @@ class AttributeObfuscation(NodeTransformer):
         self.in_assign = False
 
     def visit_Assign(self, assign: Assign) -> Assign:
-
         """
         This function defines attribute obfuscation mode.
 
@@ -1060,7 +1129,6 @@ class AttributeObfuscation(NodeTransformer):
         return assign
 
     def visit_AugAssign(self, assign: AugAssign) -> AugAssign:
-
         """
         This function defines attribute obfuscation mode.
 
@@ -1074,7 +1142,6 @@ class AttributeObfuscation(NodeTransformer):
         return assign
 
     def visit_Attribute(self, attribute: Attribute) -> Attribute:
-
         """
         This function obfuscate attribute name.
 
@@ -1096,17 +1163,15 @@ class AttributeObfuscation(NodeTransformer):
             constant = self.obfuscator.visit_Constant(constant)
 
         return Call(
-            func=NameAst(id=self.default_names['getattr'].obfuscation, ctx=Load()),
-            args=[
-                attribute.value,
-                constant
-            ],
-            keywords=[]
+            func=NameAst(
+                id=self.default_names["getattr"].obfuscation, ctx=Load()
+            ),
+            args=[attribute.value, constant],
+            keywords=[],
         )
 
 
 def parse_args() -> Namespace:
-
     """
     This function parses command line arguments.
     """
@@ -1117,8 +1182,7 @@ def parse_args() -> Namespace:
     add_argument("filename")
     add_argument(
         "--output-filename",
-        "--output"
-        "-o",
+        "--output" "-o",
         default=None,
         help="Filename to write the obfuscate code.",
     )
@@ -1145,10 +1209,17 @@ def parse_args() -> Namespace:
         help="Encryption key to encrypt the code.",
     )
     add_argument(
-        "--file-encoding", "-e", default="utf-8", help="Encoding to open python file."
+        "--file-encoding",
+        "-e",
+        default="utf-8",
+        help="Encoding to open python file.",
     )
     add_argument(
-        "--names-size", "-s", default=12, type=int, help="Obfuscation name size."
+        "--names-size",
+        "-s",
+        default=12,
+        type=int,
+        help="Obfuscation name size.",
     )
     add_argument(
         "--print",
@@ -1163,7 +1234,6 @@ def parse_args() -> Namespace:
 
 
 def main() -> int:
-
     """
     This function starts this tool from command line.
     """
@@ -1199,6 +1269,7 @@ def main() -> int:
         print(obfu.code)
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())
