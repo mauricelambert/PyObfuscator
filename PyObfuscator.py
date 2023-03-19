@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -93,7 +93,7 @@ from ast import (
     Store,
     Name as NameAst,
     NodeTransformer,
-    Subscript,
+    JoinedStr,
     Expr,
     ClassDef,
     FunctionDef,
@@ -102,7 +102,6 @@ from ast import (
     arg,
     parse,
     unparse,
-    JoinedStr,
 )
 from argparse import ArgumentParser, Namespace
 from logging import debug, info, basicConfig
@@ -723,7 +722,7 @@ class Obfuscator(NodeTransformer):
         code, astcode = self.add_super_arguments(code)
         code, astcode = self.init_import(code)
         code, astcode = self.init_crypt_strings(code)
-        builtins_obfu = self.init_builtins()
+        self.init_builtins()
         astcode = self.visit(astcode)
 
         attributes_obfuscator = AttributeObfuscation(self)
