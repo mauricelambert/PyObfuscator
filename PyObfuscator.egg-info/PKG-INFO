@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: PyObfuscator
-Version: 0.1.1
+Version: 0.1.2
 Summary: This module obfuscates python code.
 Home-page: https://github.com/mauricelambert/PyObfuscator/
 Author: Maurice Lambert

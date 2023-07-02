@@ -1,4 +1,13 @@
-""" Doc String du module """
+"""
+Doc String du module
+
+python3 ..\\PyObfuscator.py -o test_level1.py -l 1 test.py
+python3 ..\\PyObfuscator.py -o test_level2.py -l 2 test.py
+python3 ..\\PyObfuscator.py -o test_level3.py -l 3 test.py
+python3 ..\\PyObfuscator.py -o test_level4.py -l 4 test.py
+python3 ..\\PyObfuscator.py -o test_level5.py -l 5 test.py
+python3 ..\\PyObfuscator.py -o test_level6.py -l 6 test.py
+"""
 
 from abc import ABC as DefaultABC
 from dataclasses import dataclass

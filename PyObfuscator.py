@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -105,15 +105,15 @@ from ast import (
 )
 from argparse import ArgumentParser, Namespace
 from logging import debug, info, basicConfig
+from random import choice, choices, randint
 from string import ascii_letters, digits
 from typing import Tuple, Dict, List
-from random import choice, choices
 from dataclasses import dataclass
 from os.path import splitext
 from base64 import b85encode
+from re import sub, finditer
 from gzip import compress
 from json import dump
-from re import sub
 import builtins
 
 
@@ -309,7 +309,7 @@ class Obfuscator(NodeTransformer):
         with open(self.filename, encoding=self.encoding) as file:
             code = self.code = file.read()
 
-        debug(f"Get code from {self.filename}")
+        debug(f"Get code from {self.filename!r}")
 
         astcode = self.astcode = parse(code)
         return code, astcode
@@ -705,6 +705,59 @@ class Obfuscator(NodeTransformer):
 
         return astcode
 
+    def string_obfuscation(self, string: str) -> str:
+        """
+        This function obfuscate a string.
+        """
+
+        def to_hex(car: str) -> str:
+            return f"'\\x{ord(car):0>2x}'"
+
+        def to_octal(car: str) -> str:
+            return f"'\\{ord(car):0>3o}'"
+
+        def to_chr(car: str) -> str:
+            return f"chr({ord(car)})"
+
+        def to_chrbin(car: str) -> str:
+            return f"chr({bin(ord(car))})"
+
+        def to_chradd(car: str) -> str:
+            value = ord(car)
+            temp_value = randint(0, value)
+            return f"chr({bin(temp_value)} + {oct(value - temp_value)})"
+
+        def to_chrsub(car: str) -> str:
+            value = ord(car)
+            temp_value = randint(value, value * value)
+            return f"chr({temp_value} - {temp_value - value})"
+
+        functions = (to_hex, to_octal, to_chr, to_chrbin, to_chradd, to_chrsub)
+        string_repr = repr(string)
+        code = self.code
+        debug('Hard coded string obfuscation: ' + string_repr)
+        while string_repr in code:
+            code = code.replace(string_repr, ' + '.join(choice(functions)(car) for car in string), 1)
+        self.code = code
+        return code
+
+    def int_call_obfuscation(self) -> str:
+        """
+        This method obfuscates int calls for int obfuscation.
+        """
+
+        code = self.code
+        for match in finditer(r"\('0o[0-7]+', 8\)", code):
+            string = match.group()
+            debug('Int call obfuscation: ' + repr(string))
+            _8 = choice(('ord("\\x08")', oct(8), bin(8), (lambda x: f"{x} - {x - 8}")(randint(8, 256 * 256))))
+            value = string.split("'")[1]
+            self.code = code.replace(string, f"('{value}', {_8})", 1)
+            code = self.string_obfuscation(value)
+
+        self.code = code
+        return code
+
     def default_obfuscation(self) -> None:
         """
         This function starts the default obfuscation process.
@@ -728,10 +781,12 @@ class Obfuscator(NodeTransformer):
         attributes_obfuscator = AttributeObfuscation(self)
         astcode = attributes_obfuscator.visit(astcode)
 
-        code = unparse(astcode)
-        self.code = code.replace(
-            "'decode'", "'\\x64\\x65\\x63\\x6f\\x64\\x65'"
-        ).replace("'utf-8'", "'\\x75\\x74\\x66\\x2d\\x38'")
+        self.code = unparse(astcode)
+
+        self.string_obfuscation('decode')
+        self.code = self.string_obfuscation('utf-8')
+        self.code = self.int_call_obfuscation()
+
         code = self.add_builtins()
         code = self.gzip(code)
         code = self.xor_code(code)
@@ -781,24 +836,10 @@ class Obfuscator(NodeTransformer):
 
         is_str = isinstance(astcode.value, str)
 
-        if is_str and self.in_format_string:
-            debug(f"Format string obfuscation for {astcode.value!r}.")
-            astcode.value = astcode.value.encode(self.encoding)
-            astcode = self.generic_visit(astcode)
-
-            return Constant(
-                value="".join(
-                    f"\\x{x:0>2x}" if i % 2 else f"\\{x:0>3o}"
-                    for i, x in enumerate(astcode.value)
-                ),
-                kind=None,
-            )
-
-        elif is_str:
+        if is_str and not self.in_format_string:
             debug(f"String obfuscation for {astcode.value!r}.")
             astcode.value = astcode.value.encode(self.encoding)
             astcode = self.generic_visit(astcode)
-
             return Call(
                 func=Call(
                     func=NameAst(
@@ -838,7 +879,7 @@ class Obfuscator(NodeTransformer):
             )
 
         elif isinstance(astcode.value, int) and not self.in_format_string:
-            info(f"Integer obfuscation for {astcode.value!r}")
+            debug(f"Integer obfuscation for {astcode.value!r}")
             astcode = self.generic_visit(astcode)
             return Call(
                 func=NameAst(
@@ -846,10 +887,7 @@ class Obfuscator(NodeTransformer):
                 ),
                 args=[
                     Constant(
-                        value="".join(
-                            f"\\x{x:0>2x}" if i % 2 else f"\\{x:0>3o}"
-                            for i, x in enumerate(oct(astcode.value).encode())
-                        )
+                        value=oct(astcode.value)
                     ),
                     Constant(value=8),
                 ],
@@ -1013,7 +1051,7 @@ class Obfuscator(NodeTransformer):
         """
 
         if self.level >= 1:
-            debug(f"Name obfuscation for {astcode.id}")
+            debug(f"Name obfuscation for {astcode.id!r}")
             astcode.id = self.get_random_name(astcode.id).obfuscation
 
         astcode = self.generic_visit(astcode)
@@ -1181,7 +1219,8 @@ def parse_args() -> Namespace:
     add_argument("filename")
     add_argument(
         "--output-filename",
-        "--output" "-o",
+        "--output",
+        "-o",
         default=None,
         help="Filename to write the obfuscate code.",
     )
