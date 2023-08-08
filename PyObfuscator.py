@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -673,9 +673,13 @@ class Obfuscator(NodeTransformer):
         for element in elements:
             alias = getattr(element, "asname", None) or element.name
 
-            code = None
+            code = (
+                None
+                if "." not in module
+                else f'myimport("{module}", "{element.name}")'
+            )
             for name in module.split(".")[1:]:
-                code = f'getattr(myimport("{module}", "{element.name}"), "{name}")'
+                code = f'getattr({code}, "{name}")'
 
             if is_from_import:
                 code = f"""getattr({code if code else f'myimport("{module}", "{element.name}")'}, "{element.name}")"""
@@ -735,9 +739,13 @@ class Obfuscator(NodeTransformer):
         functions = (to_hex, to_octal, to_chr, to_chrbin, to_chradd, to_chrsub)
         string_repr = repr(string)
         code = self.code
-        debug('Hard coded string obfuscation: ' + string_repr)
+        debug("Hard coded string obfuscation: " + string_repr)
         while string_repr in code:
-            code = code.replace(string_repr, ' + '.join(choice(functions)(car) for car in string), 1)
+            code = code.replace(
+                string_repr,
+                " + ".join(choice(functions)(car) for car in string),
+                1,
+            )
         self.code = code
         return code
 
@@ -749,8 +757,15 @@ class Obfuscator(NodeTransformer):
         code = self.code
         for match in finditer(r"\('0o[0-7]+', 8\)", code):
             string = match.group()
-            debug('Int call obfuscation: ' + repr(string))
-            _8 = choice(('ord("\\x08")', oct(8), bin(8), (lambda x: f"{x} - {x - 8}")(randint(8, 256 * 256))))
+            debug("Int call obfuscation: " + repr(string))
+            _8 = choice(
+                (
+                    'ord("\\x08")',
+                    oct(8),
+                    bin(8),
+                    (lambda x: f"{x} - {x - 8}")(randint(8, 256 * 256)),
+                )
+            )
             value = string.split("'")[1]
             self.code = code.replace(string, f"('{value}', {_8})", 1)
             code = self.string_obfuscation(value)
@@ -783,8 +798,8 @@ class Obfuscator(NodeTransformer):
 
         self.code = unparse(astcode)
 
-        self.string_obfuscation('decode')
-        self.code = self.string_obfuscation('utf-8')
+        self.string_obfuscation("decode")
+        self.code = self.string_obfuscation("utf-8")
         self.code = self.int_call_obfuscation()
 
         code = self.add_builtins()
@@ -886,9 +901,7 @@ class Obfuscator(NodeTransformer):
                     id=self.default_names["int"].obfuscation, ctx=Load()
                 ),
                 args=[
-                    Constant(
-                        value=oct(astcode.value)
-                    ),
+                    Constant(value=oct(astcode.value)),
                     Constant(value=8),
                 ],
                 keywords=[],
