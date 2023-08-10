@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -93,11 +93,11 @@ from ast import (
     Store,
     Name as NameAst,
     NodeTransformer,
-    FormattedValue,
     JoinedStr,
     Expr,
     ClassDef,
     FunctionDef,
+    AsyncFunctionDef,
     Global,
     alias,
     arg,
@@ -711,7 +711,9 @@ class Obfuscator(NodeTransformer):
 
         return astcode
 
-    def string_obfuscation(self, string: str, no_backlash: bool = False) -> str:
+    def string_obfuscation(
+        self, string: str, no_backlash: bool = False
+    ) -> str:
         """
         This function obfuscate a string.
         """
@@ -741,7 +743,14 @@ class Obfuscator(NodeTransformer):
         if no_backlash:
             functions = (to_chr, to_chrbin, to_chradd, to_chrsub)
         else:
-            functions = (to_hex, to_octal, to_chr, to_chrbin, to_chradd, to_chrsub)
+            functions = (
+                to_hex,
+                to_octal,
+                to_chr,
+                to_chrbin,
+                to_chradd,
+                to_chrsub,
+            )
         string_repr = repr(string)
         code = self.code
         debug("Hard coded string obfuscation: " + string_repr)
@@ -952,7 +961,7 @@ class Obfuscator(NodeTransformer):
             module = __import__(astcode.module)
             astcode.names = [
                 alias(name=name)
-                for name in dir(module)
+                for name in getattr(module, "__all__", dir(module))
                 if not (
                     name.startswith("__")
                     and name.endswith("__")
@@ -1040,6 +1049,17 @@ class Obfuscator(NodeTransformer):
         astcode = self.generic_visit(astcode)
         self.current_class = precedent_class
         return astcode
+
+    def visit_AsyncFunctionDef(self, astcode: AsyncFunctionDef) -> AsyncFunctionDef:
+        """
+        This methods obfuscates asynchronous function
+        using the function obfusction.
+
+        astcode(AsyncFunctionDef): asynchronous function to obfuscate
+        returns a AsyncFunctionDef with different name
+        """
+
+        return self.visit_FunctionDef(astcode)
 
     def visit_FunctionDef(self, astcode: FunctionDef) -> FunctionDef:
         """

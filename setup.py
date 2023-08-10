@@ -31,9 +31,9 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
-    entry_points = {
-        'console_scripts': [
-            'PyObfuscator = PyObfuscator:main',
+    entry_points={
+        "console_scripts": [
+            "PyObfuscator = PyObfuscator:main",
         ],
     },
     python_requires=">=3.9",
