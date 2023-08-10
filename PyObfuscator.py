@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -93,6 +93,7 @@ from ast import (
     Store,
     Name as NameAst,
     NodeTransformer,
+    FormattedValue,
     JoinedStr,
     Expr,
     ClassDef,
@@ -265,6 +266,7 @@ class Obfuscator(NodeTransformer):
         self.using_default_obfu = False
 
         self.in_format_string = False
+        self.hard_coded_string = {("decode",), ("utf-8",)}
 
         super().__init__()
 
@@ -709,7 +711,7 @@ class Obfuscator(NodeTransformer):
 
         return astcode
 
-    def string_obfuscation(self, string: str) -> str:
+    def string_obfuscation(self, string: str, no_backlash: bool = False) -> str:
         """
         This function obfuscate a string.
         """
@@ -736,7 +738,10 @@ class Obfuscator(NodeTransformer):
             temp_value = randint(value, value * value)
             return f"chr({temp_value} - {temp_value - value})"
 
-        functions = (to_hex, to_octal, to_chr, to_chrbin, to_chradd, to_chrsub)
+        if no_backlash:
+            functions = (to_chr, to_chrbin, to_chradd, to_chrsub)
+        else:
+            functions = (to_hex, to_octal, to_chr, to_chrbin, to_chradd, to_chrsub)
         string_repr = repr(string)
         code = self.code
         debug("Hard coded string obfuscation: " + string_repr)
@@ -798,8 +803,8 @@ class Obfuscator(NodeTransformer):
 
         self.code = unparse(astcode)
 
-        self.string_obfuscation("decode")
-        self.code = self.string_obfuscation("utf-8")
+        for string in self.hard_coded_string:
+            self.string_obfuscation(*string)
         self.code = self.int_call_obfuscation()
 
         code = self.add_builtins()
@@ -906,12 +911,14 @@ class Obfuscator(NodeTransformer):
                 ],
                 keywords=[],
             )
+        elif is_str:
+            self.hard_coded_string.add((astcode.value, True))
         else:
             info(
                 f"In format string {astcode.value!r} this constant type can't be obfuscated."
             )
             astcode = self.generic_visit(astcode)
-            return astcode
+        return astcode
 
     def visit_Module(self, astcode: Module) -> Module:
         """
@@ -1190,6 +1197,16 @@ class AttributeObfuscation(NodeTransformer):
         assign = self.generic_visit(assign)
         self.in_assign = False
         return assign
+
+    def visit_JoinedStr(self, astcode: JoinedStr) -> JoinedStr:
+        """
+        This function changes the visit_Constant's behaviour.
+        """
+
+        self.obfuscator.in_format_string = True
+        astcode = self.generic_visit(astcode)
+        self.obfuscator.in_format_string = False
+        return astcode
 
     def visit_Attribute(self, attribute: Attribute) -> Attribute:
         """
