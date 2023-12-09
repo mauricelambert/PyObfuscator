@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -98,6 +98,7 @@ from ast import (
     ClassDef,
     FunctionDef,
     AsyncFunctionDef,
+    ExceptHandler,
     Global,
     alias,
     arg,
@@ -840,14 +841,27 @@ class Obfuscator(NodeTransformer):
 
         return new_ast
 
+    def visit_ExceptHandler(self, astcode: ExceptHandler) -> ExceptHandler:
+        """
+        This function obfuscates the except syntax.
+        """
+
+        astcode = self.generic_visit(astcode)
+        if astcode.name:
+            astcode.name = self.get_random_name(astcode.name).obfuscation
+            info("Added random name in except syntax.")
+        return astcode
+
     def visit_JoinedStr(self, astcode: JoinedStr) -> JoinedStr:
         """
         This function changes the visit_Constant's behaviour.
         """
 
+        debug("Enter in joined str...")
         self.in_format_string = True
         astcode = self.generic_visit(astcode)
         self.in_format_string = False
+        debug("Joined str end.")
         return astcode
 
     def visit_Constant(self, astcode: Constant) -> Call:
