@@ -95,6 +95,7 @@ The builtin `BaseExceptionGroup` does not exists in `python3.8` but it exists in
 Be careful with pyinstaller or other way to freeze your app, somes variables exist in the default python interpreter but not in your freezed app. Set variables with default values to solve error (for pyinstaller):
 
 ```python
+from builtins import exit
 copyright="""Copyright (c) 2001-2021 Python Software Foundation.
 All Rights Reserved.
 
