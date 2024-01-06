@@ -2,6 +2,7 @@ LICENSE.txt
 MANIFEST.in
 PyObfuscator.py
 README.md
+setup.cfg
 setup.py
 PyObfuscator.egg-info/PKG-INFO
 PyObfuscator.egg-info/SOURCES.txt

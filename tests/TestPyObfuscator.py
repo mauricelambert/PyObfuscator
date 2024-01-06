@@ -607,7 +607,7 @@ class Test_Obfuscator(TestCase):
             "visit_Constant don't return the good value with str",
         )
         self.assertEqual(
-            constant3.value, constant3_bis.value, "visit_Constant change integer value"
+            constant3.value, int(constant3_bis.args[0].value, 8), "visit_Constant change integer value"
         )
 
     def test_visit_Module(self):
