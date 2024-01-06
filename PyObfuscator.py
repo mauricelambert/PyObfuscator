@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.7"
+__version__ = "0.1.8"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -181,14 +181,14 @@ class Name:
 
     name(str): default variable name
     obfuscation(str): variable name after obfuscation (a random name)
-    is_defined(bool): a boolean representing the definition in file
+    is_attribute(bool): if True obfuscate this name as attribute
     namespace_name(str): the namespace (None or <class name> or <class name>.<function name>)
     """
 
     name: str
     obfuscation: str
-    is_defined: bool
-    namespace_name: str
+    is_attribute: bool = False
+    namespace_name: str = None
 
 
 @dataclass
@@ -267,9 +267,11 @@ class Obfuscator(NodeTransformer):
         self.in_format_string = False
         self.hard_coded_string = {("decode",), ("utf-8",)}
 
+        self.in_assign = False
+
         super().__init__()
 
-    def get_random_name(self, first_name: str, is_defined: bool = False) -> Name:
+    def get_random_name(self, first_name: str, is_attribute: bool = False) -> Name:
         """
         This function returns a random variable name.
 
@@ -279,6 +281,8 @@ class Obfuscator(NodeTransformer):
         """
 
         if (name := self.default_names.get(first_name)) is not None:
+            if is_attribute:
+                name.is_attribute = True
             return name
 
         while name is None or name in self.obfu_names.keys():
@@ -290,7 +294,7 @@ class Obfuscator(NodeTransformer):
         name = Name(
             first_name,
             name,
-            is_defined or self.default_is_define,
+            is_attribute or self.default_is_define,
             self.current_class,
         )
         self.obfu_names[name.obfuscation] = name
@@ -853,7 +857,7 @@ class Obfuscator(NodeTransformer):
 
         if self.level < 2:
             info("Level is less than 2 no Constant obfuscation.")
-            return astcode
+            return self.generic_visit(astcode)
 
         is_str = isinstance(astcode.value, str)
 
@@ -1030,7 +1034,7 @@ class Obfuscator(NodeTransformer):
 
         if self.level >= 1:
             debug(f"{astcode.name!r} (class definition) obfuscation.")
-            astcode.name = self.get_random_name(astcode.name, True).obfuscation
+            astcode.name = self.get_random_name(astcode.name, bool(precedent_class)).obfuscation
             astcode = self.delete_doc_string(astcode)
 
         astcode = self.generic_visit(astcode)
@@ -1061,8 +1065,8 @@ class Obfuscator(NodeTransformer):
         if self.level >= 1:
             name = astcode.name
             if not (name.startswith("__") and name.endswith("__")):
-                astcode.name = self.get_random_name(name, True).obfuscation
-            debug(f"{astcode.name!r} function obfuscation.")
+                astcode.name = self.get_random_name(name, bool(precedent_class)).obfuscation
+            debug(f"{name!r} function obfuscation.")
             astcode = self.delete_doc_string(astcode)
 
         astcode = self.generic_visit(astcode)
@@ -1116,6 +1120,29 @@ class Obfuscator(NodeTransformer):
         astcode = self.generic_visit(astcode)
         return astcode
 
+    def visit_Attribute(self, attribute: Attribute) -> Attribute:
+        """
+        This function adds an attributes to define when
+        the attribute should be obfuscated.
+
+        attribute: Attribute object
+        return an Attribute object with obfuscate name
+        """
+
+        attribute = self.generic_visit(attribute)
+        if self.in_assign:
+            debug(f"Attribute assignation for {attribute.attr!r}")
+            attribute.is_attribute = True
+            self.get_random_name(attribute.attr).is_attribute = True
+        elif (name := self.default_names.get(attribute.attr)) is not None:
+            debug(f"Define attribute obfuscation for: {attribute.attr!r} (defined: {name.is_attribute})")
+            attribute.is_attribute = name.is_attribute
+        else:
+            debug(f"No attribute obfuscation for: {attribute.attr!r}")
+            attribute.is_attribute = False
+
+        return attribute
+
     def visit_AnnAssign(self, astcode: AnnAssign) -> Assign:
         """
         This function obfuscates assignation.
@@ -1138,8 +1165,46 @@ class Obfuscator(NodeTransformer):
             )
             astcode = self.get_attributes_from(assign, astcode)
 
-        astcode = self.generic_visit(astcode)
-        return astcode
+        return self.visit_Assign(astcode)
+
+    def visit_Assign(self, assign: Assign) -> Assign:
+        """
+        This function defines attribute obfuscation mode.
+
+        assign: Assign object
+        return an Assign object with obfuscation
+        """
+
+        self.in_assign = True
+        for index, astcode in enumerate(assign.targets):
+            if isinstance(astcode, AST) and (return_value := self.visit(astcode)):
+                assign.targets[index] = return_value
+        self.in_assign = False
+
+        if isinstance(assign.value, AST) and (return_value := self.visit(assign.value)):
+            assign.value = return_value
+        if isinstance(assign.type_comment, AST) and (return_value := self.visit(assign.type_comment)):
+            assign.type_comment = return_value
+
+        return assign
+
+    def visit_AugAssign(self, assign: AugAssign) -> AugAssign:
+        """
+        This function defines attribute obfuscation mode.
+
+        assign: AugAssign object
+        return an AugAssign object with obfuscation
+        """
+
+        self.in_assign = True
+        if isinstance(assign.target, AST) and (return_value := self.visit(assign.target)):
+            assign.target = return_value
+        self.in_assign = False
+        if isinstance(assign.value, AST) and (return_value := self.visit(assign.value)):
+            assign.value = return_value
+        if isinstance(assign.op, AST) and (return_value := self.visit(assign.op)):
+            assign.op = return_value
+        return assign
 
     def write_deobfuscate(self) -> None:
         """
@@ -1161,7 +1226,7 @@ class Obfuscator(NodeTransformer):
             "names": [
                 {
                     "name": name.name,
-                    "definition": name.is_defined,
+                    "definition": name.is_attribute,
                     "namespace": name.namespace_name,
                     "obfuscation_name": name.obfuscation,
                 }
@@ -1232,8 +1297,8 @@ class AttributeObfuscation(NodeTransformer):
         """
 
         if (name := self.default_names.get(attribute.attr)) is not None:
-            debug(f"Change attribute: {attribute.attr}")
-            if name.is_defined:
+            debug(f"Change attribute: {attribute.attr!r} (defined: {name.is_attribute})")
+            if attribute.is_attribute:
                 attribute.attr = name.obfuscation
 
         if self.in_assign:

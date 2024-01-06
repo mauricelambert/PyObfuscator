@@ -117,17 +117,19 @@ __cached__=""
 
 ### Names obfuscation inter namespaces
 
-It's probably very difficult to define statically type of each varaibles used. Tahat cause a bug in the following code:
+It's probably very difficult to define statically type of each varaibles used. That cause a bug in the following code:
 
 ```python
 from threading import Thread
 
-def start(): print("start")
+class NotThread:
+    def start():
+        print("start")
 
 Thread(target=start).start()
 ```
 
-In the previous code all `start` names will be obfuscated with the new `start` name but the `threading.Thread` class in not obfuscated so it doesn't have the new `start` name as method, that cause the `AttributeError` (for example: `AttributeError: 'Thread' object has no attribute 'i3xEgmcuREyD'`).
+In the previous code all `start` attributes names will be obfuscated but the `threading.Thread` class in not obfuscated so it doesn't have the obfuscated `start` name as method, that cause the `AttributeError` (for example: `AttributeError: 'Thread' object has no attribute 'i3xEgmcuREyD'`).
 
 To fix it you should have names differents than non-obfuscated names.
 
@@ -140,5 +142,6 @@ To fix it you should have names differents than non-obfuscated names.
  - [Examples](https://github.com/mauricelambert/PyObfuscator/tree/main/examples)
 
 ## Licence
+
 Licensed under the [GPL, version 3](https://www.gnu.org/licenses/).
 

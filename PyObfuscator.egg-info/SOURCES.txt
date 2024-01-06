@@ -20,4 +20,8 @@ examples/test_level3.py
 examples/test_level4.py
 examples/test_level5.py
 examples/test_level6.py
+examples/test_obfu.py
 tests/TestPyObfuscator.py
+tests/_obfu.py
+tests/test.py
+tests/test_obfu.py
