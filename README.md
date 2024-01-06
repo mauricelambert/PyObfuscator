@@ -1,4 +1,4 @@
-![PyObfuscator logo](https://mauricelambert.github.io/info/python/security/PyObfuscator_small.png "PyObfuscator logo")
+![PyObfuscator logo](https://mauricelambert.github.io/info/python/security/PyObfuscator_small2.png "PyObfuscator logo")
 
 # PyObfuscator
 
