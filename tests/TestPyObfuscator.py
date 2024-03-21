@@ -37,16 +37,27 @@ import sys
 
 sys.path.append(path.join(path.dirname(__file__), "..", "PyObfuscator"))
 
-from PyObfuscator import Obfuscator, Name, AttributeObfuscation, DocPassword, DocLevels, parse_args, main
+from PyObfuscator import (
+    Obfuscator,
+    Name,
+    AttributeObfuscation,
+    DocPassword,
+    DocLevels,
+    parse_args,
+    main,
+)
 import PyObfuscator
+
 
 class Test_DocPassword(TestCase):
     def test_print_the_doc(self):
         DocPassword.print_the_doc()
-        
+
+
 class Test_DocLevels(TestCase):
     def test_print_the_doc(self):
         DocLevels.print_the_doc()
+
 
 class Test_Name(TestCase):
     def test_build_Name(self):
@@ -57,7 +68,8 @@ class Test_Name(TestCase):
             "When Name.namespace_name is defined as None, isn't None",
         )
         self.assertFalse(
-            name.is_defined, "When Name.is_defined is defined as False, isn't False"
+            name.is_attribute,
+            "When Name.is_attribute is defined as False, isn't False",
         )
         self.assertEqual(
             name.name,
@@ -75,14 +87,18 @@ class Test_AttributeObfuscation(TestCase):
     def test_visit_AugAssign(self):
         obfu = Obfuscator("")
         obfu_attr = AttributeObfuscation(obfu)
-        obfu_attr.generic_visit = lambda x: self.assertTrue(obfu_attr.in_assign)
+        obfu_attr.generic_visit = lambda x: self.assertTrue(
+            obfu_attr.in_assign
+        )
         obfu_attr.visit_AugAssign(Mock())
         self.assertFalse(obfu_attr.in_assign)
-        
+
     def test_visit_Assign(self):
         obfu = Obfuscator("")
         obfu_attr = AttributeObfuscation(obfu)
-        obfu_attr.generic_visit = lambda x: self.assertTrue(obfu_attr.in_assign)
+        obfu_attr.generic_visit = lambda x: self.assertTrue(
+            obfu_attr.in_assign
+        )
         obfu_attr.visit_Assign(Mock())
         self.assertFalse(obfu_attr.in_assign)
 
@@ -94,32 +110,45 @@ class Test_AttributeObfuscation(TestCase):
             names={
                 "test1": name1,
                 "test2": name2,
-                'getattr': Name("getattr", 'obfu3', False, None),
-                'xor': Name("xor", 'obfu4', False, None),
+                "getattr": Name("getattr", "obfu3", False, None),
+                "xor": Name("xor", "obfu4", False, None),
             },
         )
-        obfu._xor_password_key = b'\0'
+        obfu._xor_password_key = b"\0"
         obfu._xor_password_key_length = 1
 
         attribute1 = ast.Attribute(
-            value=ast.Name(id="self", ctx=ast.Load()), attr="test1", ctx=ast.Load()
+            value=ast.Name(id="self", ctx=ast.Load()),
+            attr="test1",
+            ctx=ast.Load(),
         )
         attribute2 = ast.Attribute(
-            value=ast.Name(id="self", ctx=ast.Load()), attr="test2", ctx=ast.Load()
+            value=ast.Name(id="self", ctx=ast.Load()),
+            attr="test2",
+            ctx=ast.Load(),
         )
+        attribute1.in_assign = True
+        attribute2.in_assign = False
+        attribute1.is_attribute = True
+        attribute2.is_attribute = False
         obfu_attr = AttributeObfuscation(obfu)
 
         attribute = obfu_attr.visit(attribute2)
         self.assertEqual(
-            attribute.args[1].func.args[0].args[0].value, b"test2", "visit_Attribute change undefined name"
+            attribute.args[1].func.args[0].args[0].value,
+            b"test2",
+            "visit_Attribute change undefined name",
         )
-        
+
         attribute = obfu_attr.visit(attribute1)
         self.assertEqual(
-            attribute.args[1].func.args[0].args[0].value, b"obfu1", "visit_Attribute don't change defined name"
+            attribute.args[1].func.args[0].args[0].value,
+            b"obfu1",
+            "visit_Attribute don't change defined name",
         )
-        
+
         obfu_attr.in_assign = True
+        obfu_attr.is_attribute = False
         attribute = obfu_attr.visit(attribute1)
         self.assertEqual(attribute.attr, "obfu1")
 
@@ -129,7 +158,7 @@ class Test_Function(TestCase):
         PyObfuscator.ArgumentParser.parse_args = Mock()
         parse_args()
         PyObfuscator.ArgumentParser.parse_args.assert_called_once_with()
-        
+
     def test_main(self):
         PyObfuscator.parse_args = Mock(return_value=Mock(names=["test:test"]))
         default_obfuscation = Obfuscator.default_obfuscation
@@ -139,11 +168,17 @@ class Test_Function(TestCase):
         Obfuscator.default_obfuscation.assert_called_once_with()
         Obfuscator.default_obfuscation = default_obfuscation
 
+
 class Test_Obfuscator(TestCase):
     def test_add_super_arguments(self):
         obfu = Obfuscator("")
-        code, astcode = obfu.add_super_arguments("class A:\n\tdef __init__(self):super().__init__()")
-        self.assertEqual(code, 'class A:\n\tdef __init__(self):super(self.__class__, self).__init__()')
+        code, astcode = obfu.add_super_arguments(
+            "class A:\n\tdef __init__(self):super().__init__()"
+        )
+        self.assertEqual(
+            code,
+            "class A:\n\tdef __init__(self):super(self.__class__, self).__init__()",
+        )
 
     def test_set_namespace_name(self):
         obfu = Obfuscator("")
@@ -187,7 +222,9 @@ class Test_Obfuscator(TestCase):
 
         self.assertIsInstance(name, Name, "get_rendom_name don't return a str")
         self.assertEqual(
-            len(name.obfuscation), 12, "Default get_random_name length is not 12."
+            len(name.obfuscation),
+            12,
+            "Default get_random_name length is not 12.",
         )
 
         for i in range(100):
@@ -218,18 +255,26 @@ class Test_Obfuscator(TestCase):
             code, str, "First returned value of get_code is not a str"
         )
         self.assertIsInstance(
-            parsed_code, AST, "Second returned value of get_code is not a ast.AST"
+            parsed_code,
+            AST,
+            "Second returned value of get_code is not a ast.AST",
         )
 
         self.assertEqual(
-            code, "print('Hello World !')", "get_code don't return the good code"
+            code,
+            "print('Hello World !')",
+            "get_code don't return the good code",
         )
 
         self.assertIn(
-            "Hello World !", dump(parsed_code), "get_code don't return the good ast.AST"
+            "Hello World !",
+            dump(parsed_code),
+            "get_code don't return the good ast.AST",
         )
         self.assertIn(
-            "print", dump(parsed_code), "get_code don't return the good ast.AST"
+            "print",
+            dump(parsed_code),
+            "get_code don't return the good ast.AST",
         )
 
         # remove(test_filename)
@@ -607,7 +652,9 @@ class Test_Obfuscator(TestCase):
             "visit_Constant don't return the good value with str",
         )
         self.assertEqual(
-            constant3.value, int(constant3_bis.args[0].value, 8), "visit_Constant change integer value"
+            constant3.value,
+            int(constant3_bis.args[0].value, 8),
+            "visit_Constant change integer value",
         )
 
     def test_visit_Module(self):
@@ -616,13 +663,17 @@ class Test_Obfuscator(TestCase):
 
         module_test = obfu.visit_Module(module)
         self.assertIn(
-            doc, module_test.body, "visit_Module delete doc string with level 0"
+            doc,
+            module_test.body,
+            "visit_Module delete doc string with level 0",
         )
 
         obfu.level = 6
         module_test = obfu.visit_Module(module)
 
-        self.assertNotIn(doc, module_test.body, "visit_Module don't delete doc string")
+        self.assertNotIn(
+            doc, module_test.body, "visit_Module don't delete doc string"
+        )
         self.assertListEqual(
             module_test.body,
             body_without_doc,
@@ -664,7 +715,9 @@ class Test_Obfuscator(TestCase):
 
         self.assertEqual(
             "default_obfuscation test",
-            getattr(test_obfu, obfu.default_names["environ"].obfuscation)["test"],
+            getattr(test_obfu, obfu.default_names["environ"].obfuscation)[
+                "test"
+            ],
             "default_obfuscation don't obfuscate the correctly/good code",
         )
 
@@ -704,7 +757,9 @@ class Test_Obfuscator(TestCase):
 
         ast_without_body = obfu.delete_field(ast_with_body, "body")
 
-        with self.assertRaises(AttributeError, msg="delete_field don't delete field"):
+        with self.assertRaises(
+            AttributeError, msg="delete_field don't delete field"
+        ):
             ast_without_body.body
 
     def test_delete_annotations(self):
@@ -728,7 +783,10 @@ class Test_Obfuscator(TestCase):
             ast_without_returns.returns
 
     def test_get_targets_and_value_for_import(self):
-        elements = [ast.alias(name="dump"), ast.alias(name="Assign", asname="custom")]
+        elements = [
+            ast.alias(name="dump"),
+            ast.alias(name="Assign", asname="custom"),
+        ]
         module = "ast"
 
         obfu = Obfuscator("")
@@ -736,7 +794,9 @@ class Test_Obfuscator(TestCase):
         # init_obfu_names(obfu)
         obfu.init_builtins()
         obfu.init_crypt_strings()
-        targets, values = obfu.get_targets_and_value_for_import(module, elements)
+        targets, values = obfu.get_targets_and_value_for_import(
+            module, elements
+        )
 
         targets = obfu.visit(targets)
         values = obfu.visit(values)
@@ -756,7 +816,8 @@ class Test_Obfuscator(TestCase):
             self.assertIn(
                 obfu.obfu_names[target.id].name,
                 [
-                    element.__dict__.get("asname") or element.__dict__.get("name")
+                    element.__dict__.get("asname")
+                    or element.__dict__.get("name")
                     for element in elements
                 ],
                 "get_targets_and_value_for_import return bad obfu name in first tuple",
@@ -769,7 +830,9 @@ class Test_Obfuscator(TestCase):
                 "get_targets_and_value_for_import don't return import function in second tuple",
             )
             self.assertEqual(
-                obfu.xor(value.args[0].args[0].func.args[0].args[0].value).decode(),
+                obfu.xor(
+                    value.args[0].args[0].func.args[0].args[0].value
+                ).decode(),
                 module,
                 "get_targets_and_value_for_import don't import the good function name in second tuple",
             )
@@ -784,8 +847,20 @@ class Test_Obfuscator(TestCase):
                 "get_targets_and_value_for_import don't import the good element name in second tuple",
             )
 
+        targets, values = obfu.get_targets_and_value_for_import(None, elements)
+
+        targets = obfu.visit(targets)
+        values = obfu.visit(values)
+
     def test_visit_Import(self):
-        import1 = ast.Import(names=[ast.alias(name="os"), ast.alias(name="sys"), ast.alias(name="xml.dom.minidom"), ast.alias(name="urllib.request", asname="req")])
+        import1 = ast.Import(
+            names=[
+                ast.alias(name="os"),
+                ast.alias(name="sys"),
+                ast.alias(name="xml.dom.minidom"),
+                ast.alias(name="urllib.request", asname="req"),
+            ]
+        )
 
         obfu = Obfuscator("", level=0)
         obfu.init_crypt_strings()
@@ -802,7 +877,9 @@ class Test_Obfuscator(TestCase):
         assign = obfu.visit_Import(import1)
 
         self.assertIsInstance(
-            assign, ast.Assign, "visit_Import don't return an ast.Assign object"
+            assign,
+            ast.Assign,
+            "visit_Import don't return an ast.Assign object",
         )
 
         for name in assign.targets[0].elts:
@@ -815,10 +892,14 @@ class Test_Obfuscator(TestCase):
         for call in assign.value.elts:
             try:
                 first = True
-                module = obfu.xor(call.args[0].args[0].func.args[0].args[0].value).decode()
+                module = obfu.xor(
+                    call.args[0].args[0].func.args[0].args[0].value
+                ).decode()
             except:
                 first = False
-                module = obfu.xor(call.args[0].func.args[0].args[0].value).decode()
+                module = obfu.xor(
+                    call.args[0].func.args[0].args[0].value
+                ).decode()
             if first:
                 self.assertEqual(
                     obfu.obfu_names[call.args[0].func.id].name,
@@ -838,7 +919,7 @@ class Test_Obfuscator(TestCase):
                 )
                 self.assertIn(
                     module,
-                    ["os", "sys", 'xml.dom.minidom'],
+                    ["os", "sys", "xml.dom.minidom"],
                     "visit_Import don't import good module",
                 )
 
@@ -870,7 +951,9 @@ class Test_Obfuscator(TestCase):
         assign = obfu.visit_ImportFrom(import_from1)
 
         self.assertIsInstance(
-            assign, ast.Assign, "visit_ImportFrom don't return an ast.Assign object"
+            assign,
+            ast.Assign,
+            "visit_ImportFrom don't return an ast.Assign object",
         )
 
         assign = obfu.visit_ImportFrom(import_from2)
@@ -879,7 +962,9 @@ class Test_Obfuscator(TestCase):
             len(assign.targets[0].elts),
             "visit_ImportFrom don't import all attributes when import *",
         )
-        obfu_ast_attr = [obfu.default_names[attr].obfuscation for attr in ast_attr]
+        obfu_ast_attr = [
+            obfu.default_names[attr].obfuscation for attr in ast_attr
+        ]
         self.assertListEqual(
             obfu_ast_attr,
             [name.id for name in assign.targets[0].elts],
@@ -921,7 +1006,9 @@ class Test_Obfuscator(TestCase):
                 "order of builtins or obfuscate_name is not good",
             )
             self.assertIn(
-                builtins[i], elements, f"{builtins[i]} isn't in defaults variables"
+                builtins[i],
+                elements,
+                f"{builtins[i]} isn't in defaults variables",
             )
 
     def test_init_crypt_strings(self):
@@ -933,7 +1020,8 @@ class Test_Obfuscator(TestCase):
 
         for code, obfu in ((code1, obfu1), (code2, obfu2)):
             self.assertIsNotNone(
-                obfu._xor_password_key, "init_crypt_strings don't set the xor key"
+                obfu._xor_password_key,
+                "init_crypt_strings don't set the xor key",
             )
             self.assertEqual(
                 len(obfu._xor_password_key),
@@ -990,16 +1078,22 @@ class Test_Obfuscator(TestCase):
         class_ = obfu.visit_ClassDef(class_)
 
         self.assertEqual(
-            class_.name, "Test", "visit_ClassDef change the class name with level 0"
+            class_.name,
+            "Test",
+            "visit_ClassDef change the class name with level 0",
         )
         self.assertEqual(
-            len(class_.body), 1, "visit_ClassDef delete doc string with level 0"
+            len(class_.body),
+            1,
+            "visit_ClassDef delete doc string with level 0",
         )
 
         obfu.level = 6
         class_ = obfu.visit_ClassDef(class_)
 
-        self.assertEqual(len(class_.body), 0, "visit_ClassDef don't delete doc string")
+        self.assertEqual(
+            len(class_.body), 0, "visit_ClassDef don't delete doc string"
+        )
         self.assertNotEqual(
             class_.name, "Test", "visit_ClassDef don't change the class name"
         )
@@ -1018,7 +1112,11 @@ class Test_Obfuscator(TestCase):
         function1 = ast.FunctionDef(
             name="__init__",
             args=ast.arguments(
-                posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]
+                posonlyargs=[],
+                args=[],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
             ),
             body=[ast.Expr(value=ast.Constant(value=" Doc String "))],
             decorator_list=[],
@@ -1027,7 +1125,11 @@ class Test_Obfuscator(TestCase):
         function2 = ast.FunctionDef(
             name="init",
             args=ast.arguments(
-                posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]
+                posonlyargs=[],
+                args=[],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
             ),
             body=[ast.Expr(value=ast.Constant(value=" Doc String "))],
             decorator_list=[],
@@ -1041,7 +1143,9 @@ class Test_Obfuscator(TestCase):
             "visit_FunctionDef change the function name with level 0",
         )
         self.assertEqual(
-            len(function.body), 1, "visit_FunctionDef delete doc string with level 0"
+            len(function.body),
+            1,
+            "visit_FunctionDef delete doc string with level 0",
         )
 
         obfu.level = 6
@@ -1051,7 +1155,9 @@ class Test_Obfuscator(TestCase):
             len(function.body), 0, "visit_FunctionDef don't delete doc string"
         )
         self.assertNotEqual(
-            function.name, "init", "visit_FunctionDef don't change the function name"
+            function.name,
+            "init",
+            "visit_FunctionDef don't change the function name",
         )
         self.assertEqual(
             obfu.default_names["init"].obfuscation,
@@ -1076,7 +1182,9 @@ class Test_Obfuscator(TestCase):
 
         obfu = Obfuscator("", level=0)
         name = obfu.visit_Name(name)
-        self.assertEqual(name.id, "name", "visit_Name change Name.id with level 0")
+        self.assertEqual(
+            name.id, "name", "visit_Name change Name.id with level 0"
+        )
 
         obfu.level = 6
         name = obfu.visit_Name(name)
@@ -1118,9 +1226,13 @@ class Test_Obfuscator(TestCase):
         obfu = Obfuscator("", level=0)
         arg = obfu.visit_arg(arg)
 
-        self.assertIsNotNone(arg.annotation, "visit_arg delete annotation with level 0")
+        self.assertIsNotNone(
+            arg.annotation, "visit_arg delete annotation with level 0"
+        )
         self.assertEqual(
-            arg.annotation.id, "str", "visit_arg change annotation with level 0"
+            arg.annotation.id,
+            "str",
+            "visit_arg change annotation with level 0",
         )
 
         obfu.level = 6
@@ -1222,7 +1334,8 @@ class Test_Obfuscator(TestCase):
         obfu.default_variables = "p=print\n"
 
         with self.assertRaises(
-            RuntimeError, msg="add_builtins don't raise Error if code isn't defined"
+            RuntimeError,
+            msg="add_builtins don't raise Error if code isn't defined",
         ):
             obfu.add_builtins()
 
@@ -1239,7 +1352,8 @@ class Test_Obfuscator(TestCase):
         obfu = Obfuscator("")
 
         with self.assertRaises(
-            RuntimeError, msg="write_code don't raise Error if code isn't defined"
+            RuntimeError,
+            msg="write_code don't raise Error if code isn't defined",
         ):
             obfu.write_code()
 
@@ -1273,7 +1387,9 @@ def builds():
     false_doc = ast.Expr(value=Mock())
 
     AST_test = ast.AST(
-        body=[doc, false_doc], annotation="annotation", returns=ast.Constant(value=None)
+        body=[doc, false_doc],
+        annotation="annotation",
+        returns=ast.Constant(value=None),
     )
     AST_test._fields = tuple(AST_test.__dict__.keys())
 
