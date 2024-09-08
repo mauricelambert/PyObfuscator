@@ -3,7 +3,7 @@
 
 ###################
 #    This module obfuscates python code.
-#    Copyright (C) 2021, 2022, 2023, 2024  Maurice Lambert
+#    Copyright (C) 2021-2024  Maurice Lambert
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ Tests:
 
 default_dir = dir()
 
-__version__ = "0.1.9"
+__version__ = "0.1.10"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -59,7 +59,7 @@ license = "GPL-3.0 License"
 __url__ = "https://github.com/mauricelambert/PyObfuscator/"
 
 copyright = """
-PyObfuscator  Copyright (C) 2021, 2022, 2023, 2024  Maurice Lambert
+PyObfuscator  Copyright (C) 2021-2024  Maurice Lambert
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software, and you are welcome to redistribute it
 under certain conditions.
